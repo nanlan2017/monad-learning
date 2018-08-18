@@ -1,6 +1,7 @@
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE AllowAmbiguousTypes #-}
-module ReaderDemo.ReaderDemo1 where
+module ReaderDemo.LoadFile where
+
 import           Control.Monad                  ( replicateM_ )
 
 import           Control.Monad.Reader           ( MonadReader
