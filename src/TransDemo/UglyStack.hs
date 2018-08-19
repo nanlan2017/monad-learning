@@ -1,8 +1,11 @@
+{-# LANGUAGE GeneralizedNewtypeDeriving #-}
 module TransDemo.UglyStack where
 
 
 import           System.Directory
 import           System.FilePath
+
+import           Control.Monad
 import           Control.Monad.Reader
 import           Control.Monad.State
 -- ***********************************************************
@@ -19,13 +22,14 @@ data AppState = AppState
 
 type App = ReaderT AppConfig (StateT AppState IO)
 
-runApp :: App a -> Int -> IO (a, AppState)
+-- run :: 将newtype 化名解开  例如runReader :: Reader a -> (r->a)
+runApp :: App a -> (Int -> IO (a, AppState))
 runApp k maxDepth =
     let config = AppConfig maxDepth
         state  = AppState 0
     in  runStateT (runReaderT k config) state
 
--- ***********************************************************
+
 
 constrainedCount :: Int -> FilePath -> App [(FilePath, Int)]
 constrainedCount curDepth path = do
@@ -43,3 +47,18 @@ constrainedCount curDepth path = do
                 constrainedCount newDepth newPath
             else return []
     return $ (path, length contents) : concat rest
+-- **************************************************************************************
+newtype MyApp a = MyA
+  {
+      runA :: ReaderT AppConfig (StateT AppState IO) a
+  } deriving (
+        Functor,Applicative,Monad,
+        MonadIO,
+        MonadReader AppConfig,
+        MonadState AppState)
+
+runMyApp :: MyApp a -> Int -> IO (a, AppState)
+runMyApp k maxDepth =
+    let config = AppConfig maxDepth
+        state  = AppState 0
+    in  runStateT (runReaderT (runA k) config) state

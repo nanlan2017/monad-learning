@@ -71,7 +71,13 @@ askPassphrase' = do
 newtype IdentityT m a = IdentityT { runIdentityT :: m a}
 
 instance (Monad m)=> Functor (IdentityT m) where
+    -- fmap :: (a->b) -> IdentityT m a -> Identity m b
+    fmap f m = IdentityT $ fmap f (runIdentityT m)
+
 instance (Monad m)=> Applicative (IdentityT m) where
+    pure = return
+
+    f <*> m = IdentityT $ runIdentityT f <*> runIdentityT m
 
 instance (Monad m)=> Monad (IdentityT m) where
     -- return :: a -> IdentityT m a  // m a

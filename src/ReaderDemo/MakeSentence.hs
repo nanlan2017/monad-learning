@@ -11,6 +11,9 @@ myName step = do
     return (step ++ ", I am " ++ name)
     -- 是怎么deduce 出这个do 块对应的是 MonadReader String m 这个东西的？  关键就是ask  知道处于 MonadReader + 最后return String
 
+myName_do :: MonadReader String m => String -> m String
+myName_do step = reader $ \str -> str ++ ", I am " ++ step
+
 
 -- | 最后得到的 Reader 这个monadic value 仍然内部wrap 的是一个 e -> result 的函数，提供一个初始环境方可得到结果。    
 localExample :: Reader String (String, String, String)
