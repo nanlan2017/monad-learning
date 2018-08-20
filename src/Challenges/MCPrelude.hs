@@ -16,11 +16,11 @@
 --
 -----------------------------------------------------------------------------
 
-module Json.MCPrelude (
+module Challenges.MCPrelude (
 
     -- * Standard types, classes and related functions
 
-    -- ** Basic data types
+    -- * Basic data types
     Bool(False, True),
     (&&), (||), not, otherwise,
 
@@ -29,23 +29,23 @@ module Json.MCPrelude (
 
     ifThenElse,
 
-    -- *** Tuples
+    -- * Tuples
     fst, snd, curry, uncurry,
 
-    -- ** Basic type classes
+    -- * Basic type classes
     Eq((==), (/=)),
     Ord(compare, (<), (<=), (>=), (>), max, min),
     Enum(succ, pred, toEnum, fromEnum, enumFrom, enumFromThen,
          enumFromTo, enumFromThenTo),
     Bounded(minBound, maxBound),
 
-    {- Numbers -}
+    --  ------------------------* Numbers
 
-    -- *** Numeric types
+    -- ------------------------ * Numeric types
     Int, Integer, Float, Double,
     Rational,
 
-    -- *** Numeric type classes
+    -- ------------------------ * Numeric type classes
     Num((+), (-), (*), negate, abs, signum, fromInteger),
     Real(toRational),
     Integral(quot, rem, div, mod, quotRem, divMod, toInteger),
@@ -57,14 +57,14 @@ module Json.MCPrelude (
               encodeFloat, exponent, significand, scaleFloat, isNaN,
               isInfinite, isDenormalized, isIEEE, isNegativeZero, atan2),
 
-    -- *** Numeric functions
+    -- ------------------------ *** Numeric functions
     subtract, even, odd, gcd, lcm, (^), (^^),
     fromIntegral, realToFrac,
 
-    -- ** Miscellaneous functions
+    -- ------------------------ ** Miscellaneous functions
     id, const, (.), flip, ($), until,
 
-    -- * List operations
+    -- ------------------------ * List operations
     map, (++), filter,
     null, length, (!!),
     reverse,
@@ -88,24 +88,27 @@ module Json.MCPrelude (
     -- ** Functions on strings
     lines, words, unlines, unwords,
 
-    -- * Converting to and from @String@
+    -- ------------------------* Converting to and from @String@
     -- ** Converting to @String@
     ShowS,
     Show(showsPrec, showList, show),
     shows,
     showChar, showString, showParen,
+    
+
     -- ** Converting from @String@
     ReadS,
     Read(readsPrec, readList),
     reads, readParen, read, lex,
     undefined,
+    {-▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃-}
 
     Seed,
     mkSeed,
     rand,
     toLetter,
-
     GreekData,
+    -- -----------------
     greekDataA,
     greekDataB,
     salaries,
@@ -115,7 +118,7 @@ module Json.MCPrelude (
     cardSuits
 
   ) where
-
+{-▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃-}
 import Data.Char
 import Data.List
 import Data.Tuple
@@ -126,18 +129,16 @@ import GHC.Num
 import GHC.Real
 import GHC.Float
 import GHC.Show
+
 import Prelude (undefined)
 import Text.Read
-
-infixr 0 $!
+{-▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃-}
 
 ifThenElse :: Bool -> a -> a -> a
 ifThenElse True a _ = a
 ifThenElse False _ a = a
 
--- -----------------------------------------------------------------------------
--- Miscellaneous functions
-
+infixr 0 $!
 -- | Strict (call-by-value) application, defined in terms of 'seq'.
 ($!)    :: (a -> b) -> a -> b
 f $! x  = let !vx = x in f vx  -- see #2273
@@ -168,7 +169,7 @@ toLetter :: Integer -> Char
 toLetter = chr . (ord 'a' + ) . (`mod` 26) . fromIntegral
 
 type GreekData = [(String, [Integer])]
-
+{-▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃-}
 greekDataA :: GreekData
 greekDataA = [ ("alpha", [5, 10])
              , ("beta", [0, 8])

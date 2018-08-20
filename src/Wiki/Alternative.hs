@@ -110,12 +110,15 @@ char c s = do
 
 hexChar :: Char -> String -> Maybe (Char, String)
 hexChar c s = do
-    let (c' : s') = s
-    if ishex c && c == c' then Just (c, s') else Nothing
+    guard $ ishex c
+    char c s
 
 ishex :: Char -> Bool
-ishex c = True
+ishex c = c `elem` hexnums || c `elem` ['a' .. 'f']
+    where hexnums = ['1' .. '9']
 
 
-
+-- hint ? 这能提示啥？？
+t0 :: [String -> Maybe Int]
 t0 = map digit [0 .. 9]
+t0' = map digit
