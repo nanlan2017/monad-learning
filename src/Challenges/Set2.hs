@@ -64,6 +64,7 @@ lift2 f Nothing  _        = Nothing
 lift2 f _        Nothing  = Nothing
 lift2 f (Just x) (Just y) = f x y
 
+-- chain / link
 infixl 1 >=>
 (>=>) :: Maybe a -> (a -> Maybe b) -> Maybe b
 (>=>) Nothing   _ = Nothing
@@ -168,9 +169,17 @@ transMaybe :: (a -> b) -> Maybe a -> Maybe b --就是fmap
 transMaybe f Nothing  = Nothing
 transMaybe f (Just x) = Just $ f x
 
-maxi :: Ord a => [a] -> Maybe a
-maxi [] = Nothing
--- maxi (x : xs) = Just $ max x (maxi xs)
--- tailMax :: Ord a => [a] -> Maybe a
--- tailMax = transMaybe max . tailMay  -- max :: [a]-> Maybe a
+tailMax x = tailMay x >=> maxMay -- maxMay :: [a]-> Maybe a
+tailMin x = tailMay x >=> minMay
 
+-- 要求使用transMaybe (lift) 实现tailMax
+tailMax' :: (Ord a) => [a] -> Maybe (Maybe a)
+tailMax' = transMaybe maxMay . tailMay --反正先tail,再 max
+
+combine :: Maybe (Maybe a) -> Maybe a
+combine Nothing         = Nothing
+combine (Just Nothing ) = Nothing
+combine (Just (Just v)) = Just v
+
+tailMax'' :: (Ord a) => [a] -> Maybe a  -- 这个类型签名才是符合逻辑的
+tailMax'' = combine . transMaybe maxMay . tailMay
