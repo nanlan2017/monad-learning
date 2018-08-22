@@ -3,13 +3,10 @@
 module Challenges.Set2 where
 
 import           Challenges.MCPrelude
+import           Challenges.UsingMonad
 -- ◩◩◩◩◩◩◩◩◩◩◩◩◩◩◩◩◩◩◩◩◩◩◩◩◩◩◩◩◩◩◩◩◩◩◩◩◩◩◩◩◩◩◩◩◩◩◩◩◩◩◩◩◩◩◩◩◩◩◩◩◩◩◩◩◩◩◩◩◩◩◩◩◩◩◩◩◩◩
 {-———————————————————————————————1. The Maybe type —————————————————————————————————————-}
-data Maybe a = Nothing | Just a
 
-instance Show a=> Show (Maybe a) where
-    show Nothing = "Nothing"
-    show (Just x)= "Just "++ show x
 {-————————————————————————2.Build a library of things that can fail —————————————————————————————————————-}
 {-   换一种思路看 m a -> (a->m b)
 
@@ -107,12 +104,13 @@ chain f (Just x) = f x
 (>=>) Nothing   _ = Nothing
 (>=>) (Just va) f = f va
 
--- \ \ \ \\ \\ \ \\ \ \ \\ \\\ \ \\ \ \ \ \ \ \\ \\ \ \\ \ \ \\ \\\ \ \\ \ \ \ \ \ \\ \\ \ \\ \ \ \\ \\\ \ \\ \ \ 
+-- \ \ \ \\ \\ \ \\ \ \ \\ \\\ \ \\ \ \ \ \ \ \\ \\ \ \\ \ \ \\ \\\ \ \\ \ \ \ \ \ \\ \\ \ \\ \ \ \\ \\\ \ \\ \ \
+{-
 lift :: (a -> b) -> Maybe a -> Maybe b
 lift _ Nothing  = Nothing
 lift f (Just x) = Just $ f x
 
-lift2 :: (a -> b -> Maybe c) -> Maybe a -> Maybe b -> Maybe c
+lift2 :: (a -> b -> Maybe c) -> Maybe a -> Maybe b -> Maybe c  --写错了！！
 lift2 f Nothing  _        = Nothing
 lift2 f _        Nothing  = Nothing
 lift2 f (Just x) (Just y) = f x y
@@ -131,6 +129,7 @@ v04 = map (queryGreek' greekDataB) ["rho", "phi", "chi", "psi", "omega"]
 r1 = show v01 == show v03
 r2 = show v02 == show v04
 -- ◯◯◯◯◯◯◯◯◯◯◯◯◯◯◯◯◯◯◯◯◯◯◯◯◯◯◯◯◯
+-}
 -- \ \ \ \\ \\ \ \\ \ \ \\ \\\ \ \\ \ \ \ \ \ \\ \\ \ \\ \ \ \\ \\\ \ \\ \ \ \ \ \ \\ \\ \ \\ \ \ \\ \\\ \ \\ \ \ 
 {-
 queryGreek2 :: GreekData -> String -> Maybe Double
@@ -144,15 +143,27 @@ queryGreek2 ((k, list) : xs) key = if k == key
             (headMay list)
     else queryGreek xs key
 -}
-queryGreek2 :: GreekData -> String -> Maybe Double
-queryGreek2 []               _   = Nothing
-queryGreek2 ((k, list) : xs) key = if k == key
 -- 这个是一块”承接“的 action，结果为maxtail
 -- 这是另一个action （与前面的不承接）， 结果为 hea
 -- 不承接。可以取前面的actions 的结果。
+queryGreek2 :: GreekData -> String -> Maybe Double
+queryGreek2 []               _   = Nothing
+queryGreek2 ((k, list) : xs) key = if k == key
     then tailMay list >=> maxMay >=> \maxtail -> headMay list
         >=> \hea -> divMay (fromInteger maxtail) (fromInteger hea)
     else queryGreek2 xs key
+
+queryGreek2' :: GreekData -> String -> Maybe Double
+queryGreek2' []               _   = Nothing
+queryGreek2' ((k, list) : xs) key = if k == key
+    then
+        let
+            m = tailMay list >=> maxMay
+            k = headMay list
+        in
+            m >=> \maxtail ->
+                k >=> \hea -> divMay (fromInteger maxtail) (fromInteger hea)
+    else queryGreek2' xs key
 
 {-
 do      (do 里面写承接的倒是很麻烦！！))
@@ -191,7 +202,7 @@ r4 = show v02 == show v06
 
 gd = [("fuck", [1])]
 v07 = queryGreek gd "fuck"
-v07' = queryGreek' gd "fuck"
+-- v07' = queryGreek' gd "fuck"
 v07'' = queryGreek2 gd "fuck"
 
 -- 报错：Non-exhaustive patterns in lambda
@@ -213,18 +224,18 @@ addSalaries alist k1 k2 = case lookup alist k1 of
 addSalaries' :: [(String, Integer)] -> String -> String -> Maybe Integer
 addSalaries' alist k1 k2 = ylink (+) (lookup alist k1) (lookup alist k2)
 
-
+{-
 -- | 抽象出的运算模式： 只有两个 Action 的结果r1,r2都成功返回了，才对他们的结果进行合并处理；否则整体结果为 Nothing
 ylink :: (a -> b -> c) -> Maybe a -> Maybe b -> Maybe c
 ylink _ _        Nothing  = Nothing
 ylink _ Nothing  _        = Nothing
 ylink f (Just x) (Just y) = mkMaybe $ f x y
-
+-}
 -- |||  使用 action 的 bind 意义实现 lift ,当然bind+ lambda 可实现do 写法
 --  ▇▇▇▇▇▇▇▇▇▇▇ 关键是理解它所描述的运算逻辑 。 其实都是非常简单的顺序几
 
-ylink' :: (a -> b -> c) -> Maybe a -> Maybe b -> Maybe c
-ylink' f m k = m >=> \x -> k >=> \y -> mkMaybe $ f x y
+ylink :: (a -> b -> c) -> Maybe a -> Maybe b -> Maybe c
+ylink f m k = m >=> \x -> k >=> \y -> mkMaybe $ f x y
 
 -- ◯◯◯◯◯◯◯◯◯ test ◯◯◯◯◯◯◯◯◯◯ --
 v09 = addSalaries' salaries "alice" "bob"

@@ -9,6 +9,7 @@ import           Challenges.MCPrelude
 import           Challenges.Set1
 import           Challenges.Set2
 import           Challenges.UsingMonad
+
 -- ◩◩◩◩◩◩◩◩◩◩◩◩◩◩◩◩◩◩◩◩◩◩◩◩◩◩◩◩◩◩◩◩◩◩◩◩◩◩◩◩◩◩◩◩◩◩◩◩◩◩◩◩◩◩◩◩◩◩◩◩◩◩◩◩◩◩◩◩◩◩◩◩◩◩◩◩◩◩
 {-—————————————————————————————1.Generalizing State and Maybe———————————————————————————————————————————————————-}
 {-  <Set1 >
@@ -19,6 +20,15 @@ generalB :: (a -> b -> c) -> Gen a -> Gen b -> Gen c
 -- 发现都存在  liftM2 :: (a -> b -> c) -> m a -> m b -> m c   即 bind ::Maybe a -> (a -> Maybe b) -> Maybe b
 
 -- generalB2 :: 能够将两个前后承接的 action 串起、并对其结果进行 纯性的 组合
+-- |▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇ 为什么这里最后必须 return？ 而不能是 直接 Gen a -> Gen b->Gen c 
+-- |▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇
+-- |▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇
+-- 这里的本质是  动作的捆绑，既然得到结果的 过程是有 副作用的，那么最终的结果必然也是 带副作用的。不会出现 “下降”:   m  a ->  a
+-- generalB2' :: (a -> b -> c) -> Gen a -> Gen b -> c
+-- generalB2' f gena genb =
+--     gena `genTwo` \ra -> genb `genTwo` \rb -> f ra rb   <---- 这是无法编译通过的，因为 Action 链的 每个环都是action ，包括最终得到的结果。
+-- |▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇
+-- |▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇
 generalB2 :: (a -> b -> c) -> Gen a -> Gen b -> Gen c
 generalB2 f gena genb =
     gena `genTwo` \ra -> genb `genTwo` \rb -> mkGen $ f ra rb   -- 理解：这个mkGen 这样用 合理吗 ？？
@@ -93,72 +103,10 @@ repRandom''' :: [Gen a] -> Gen [a]
 repRandom''' (g : gs) = generalB2 (:) g (repRandom''' gs)
 {-—————————————————————————————2. A missed generalization ———————————————————————————————————————————-}
 
-
-
 {-——————————————————————————————3. Formalizing the pattern —————————————————————————————————————————————-}
-class Monad m where
-    bind :: m a -> (a-> m b)-> m b
-    return :: a -> m a
-
-newtype Generator a = Generator { runGenerator ::Seed -> (a,Seed)}
-
--- genTwo / link (>=>)
-instance Monad Generator where
-    return x = Generator $ \seed -> (x,seed)
-    -- bind :: Generator a -> (a->Generator b) -> Generator b
-    bind genA f = Generator $ \seed ->
-        let
-            (ra,seed') = runGenerator genA seed
-        in
-            runGenerator (f ra) seed'
-
-instance Monad Maybe where
-    return = Just
-    -- bind :: 
-    bind Nothing _ = Nothing
-    bind (Just x) f = f x
-
-instance Monad [] where
-    return x = [x]
-    bind = flip concatMap
 
 {-————————————————————————————4. Creating instances ———————————————————————————————————————————————-}
--- ▇▇▇▇▇▇▇ Gen a 是一个动作action， 但这个动作并不是能直接执行得到结果值 （如同 IO），而是执行时需要有 预置状态s的动作！    
-evalGenerator :: Generator a -> Seed -> a
-evalGenerator gen seed = fst $ runGenerator gen seed
 
-{-———————————————————————————————5. Revisiting other generic functions———————————————————————————————————————————————-}
-                 -- this time do everything in terms of return and bind.
--- Set1 : repRandom
-sequence :: (Monad m) => [m a] -> m [a]
-sequence (act1 : actions) =
-    act1 `bind` \r1 -> sequence actions `bind` \rs -> return $ r1 : rs
-
--- Set1 : generalB
-liftM2 :: Monad m => (a -> b -> c) -> m a -> m b -> m c
-liftM2 f actA actB = actA `bind` \ra -> actB `bind` \rb -> return $ f ra rb
-
--- Set2 : >=>
-chain :: Maybe a -> (a -> Maybe b) -> Maybe b
-chain = bind -- flip bind
-
--- Set2 : combine
-join :: Maybe (Maybe a) -> Maybe a
-join m = m `bind` id
-
--- Set3 : allCombs  -- liftM2
-
--- Set3 : allCombs3
-liftM3 :: Monad m => (a -> b -> c -> d) -> m a -> m b -> m c -> m d
-liftM3 f actA actB actC =
-    actA `bind` \ra -> actB `bind` \rb -> actC `bind` \rc -> return $ f ra rb rc
--- Set3 : combStep
--- | ▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇ 这地方有点乱： action 的承接、先后关系？？ 对副作用状态的 连贯影响 ？？
--- | ▇▇▇▇▇▇▇ 可以用 monad 的 return /bind 实现 Applicative 的 ap 吗？
-ap :: [a -> b] -> [a] -> [b]  -- m (a->b ) -> m a -> m b  
--- ▇▇▇▇▇▇▇▇▇▇▇▇▇▇ 理解该计算的语义：两个独立的动作，一个动作会得到一个函数、一个动作得到一个值 ---> “先后化- 让它们发生 ”这两个动作
--- ▇▇▇▇▇▇▇▇▇▇▇▇▇▇  注意： 这时候只是“安排它们发生”，结果部分先后！   action1 >>= \r1 -> action2 ...   还是  action2 >>= \r2 -> action1 ...
-ap fl al = fl `bind` \f -> al `bind` \ss -> return $ f ss
-
+{-———————————————————————————————5. Revisiting other generic functions———————————————————————————————-}
 
 {-———————————————————————————————6. Using the abstraction——————————————————————————————————————————————-}
