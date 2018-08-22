@@ -8,6 +8,7 @@ module Challenges.Set4 where
 import           Challenges.MCPrelude
 import           Challenges.Set1
 import           Challenges.Set2
+import           Challenges.UsingMonad
 -- ◩◩◩◩◩◩◩◩◩◩◩◩◩◩◩◩◩◩◩◩◩◩◩◩◩◩◩◩◩◩◩◩◩◩◩◩◩◩◩◩◩◩◩◩◩◩◩◩◩◩◩◩◩◩◩◩◩◩◩◩◩◩◩◩◩◩◩◩◩◩◩◩◩◩◩◩◩◩
 {-—————————————————————————————1.Generalizing State and Maybe———————————————————————————————————————————————————-}
 {-  <Set1 >
@@ -21,15 +22,63 @@ generalB :: (a -> b -> c) -> Gen a -> Gen b -> Gen c
 generalB2 :: (a -> b -> c) -> Gen a -> Gen b -> Gen c
 generalB2 f gena genb =
     gena `genTwo` \ra -> genb `genTwo` \rb -> mkGen $ f ra rb   -- 理解：这个mkGen 这样用 合理吗 ？？
+{-   
 -- |▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇
+--                            bind : “捆绑” 两个 承接的 actions ---> 成为 一个大的 Action
+                                    解决的是： a function that does one step of two generators and the necessary state threading
+
+    -- readDB/writeLog 在执行时都会修改全局的状态。             readDB s1  >>=  writeLog   >> writeLove
+                                                             M ra     >>=  ra -> M rb 
+                                 m a -> (a-> m b) -> m b
+                        m 里只 囊括了 S,  但是上一步的运算结果 a 也是可以使用的 状态资源啊！！！！   
+          ▇▇ ▇▇▇ ▇▇  ▇ ▇▇▇ ▇▇▇▇ ▇▇▇▇ ▇▇▇▇ ▇ ▇▇ ▇▇▇ ▇▇     （比如：State 中只涵盖了5个全局变量，  那么某个action 的结果 a 成了一个新的 可见变量，但并不包括在State 中！！）
+                （当然了，虽然我们最后只取了 整个流程的结果。但是执行过的所有actions 其副作用已发生：全局状态都已改变！）
+                        ▇ ▇▇▇ ▇▇▇▇ ▇▇▇▇ ▇▇▇▇ ▇ ▇▇ ▇▇▇ ▇▇ a 是 新出来的那部分state  (可供后续 actions 使用)      
+【C++】                        
+    -- readDB/writeLog 在执行时都会修改全局的状态。             readDB s1 >>= writeLog >> writeLove                        
+    String str = "update TABLE"
+    ra = readDB (s1); 
+    {rb =}   writeLog (ra)); 
+    {rc = }  writeLove "love it"
+
+【Haskell- do】 
+    let str =  "update TABLE"
+    ra <-  readDB s1
+    writeLog ra
+    writeLove "love it" 
+
+
+--                         ▇▇▇▇ ▇ ▇▇ ▇▇▇ ▇▇  (then)  >>  : 刚才这个 action 的结果值 在后续动作中 用不着 ！
+【C++】
+    -- readDB/writeLog 在执行时都会修改全局的状态。             readDB s1  >> writeLog
+    String str = "update TABLE"
+    ra = readDB (s1); 
+    rb = writeLog "done";
+
+
+【C++】
+    -- readDB/writeLog 在执行时都会修改全局的状态。             { readDB s1   >>= \r1 -> }  writeLove  >>  writeLog r1
+                                                                    M ra                  M rb           M rc
+    String str = "update TABLE"
+    ra = readDB (s1); 
+    rb = writeLove "love it";  
+    rc = writeLog (ra);  
+
+
+
 -- |▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇
 -- |▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇  bind 是 C++ 版的 一连串的顺序的计算。
+
+--         pure 的computations(连续运算：即每一步是对上一步的运算结果进行运算)    data -> calc1 -> calc2 -> calc3  = result 
+
+--         而如果 其中的 每一步calc1/ calc2/ calc3 是有副作用的，  即 a->s -> (b,s) ， 那么要对data 进行连续运算就要 同时传递 s 了
+--        \\ \ \\ \ \       bind 的 作用就是让你能在 calc1/calc2/calc3 都有副作用时，仍让能写 data -> calc1 >>= calc2 >>= calc2 = result
 -- |▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇
 -- |▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇
             -- bind 是用来串连 有副作用的 计算actions (computation) 用的
 -- 当一连串的computation 都是没有副作用的时，全部顺起来用函数组合就行了、其他的combinator 为 where/let 里的子运算
 -- 而bind 就是带副作用的 action 的先后发生，这种action 就和 命令式里的 “一段计算” 很像了！
-
+-}
 -- ▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇ 本计算的实际语义 ： 串联一连串computation actions，并收集它们的结果。
 repRandom'' :: [Gen a] -> Gen [a]
 repRandom'' [] = mkGen []
