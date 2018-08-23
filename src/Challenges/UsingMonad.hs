@@ -6,6 +6,8 @@ import           Challenges.MCPrelude
 -- ◩◩◩◩◩◩◩◩◩◩◩◩◩◩◩◩◩◩◩◩◩◩◩◩◩◩◩◩◩◩◩◩◩◩◩◩◩◩◩◩◩◩◩◩◩◩◩◩◩◩◩◩◩◩◩◩◩◩◩◩◩◩◩◩◩◩◩◩◩◩◩◩◩◩◩◩◩◩
 data Maybe a = Nothing | Just a
 
+data Either e a = Left e | Right a
+
 instance Show a=> Show (Maybe a) where
     show Nothing = "Nothing"
     show (Just x)= "Just "++ show x
