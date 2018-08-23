@@ -1,6 +1,12 @@
 module Main where
 
-import Lib
+import           Lib
+import           Challenges.Set1
 
-main :: IO ()
-main = someFunc
+main = fiveRands_D
+
+
+test1 :: IO ()
+test1 = do
+    name <- getLine
+    putStrLn $ "Hello" ++ name

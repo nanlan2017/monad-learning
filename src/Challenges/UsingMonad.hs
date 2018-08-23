@@ -14,33 +14,30 @@ newtype Gen a = WrapGen { runGen ::Seed -> (a,Seed)}
 {-———————————————————————————————————————————————————————————————————————————————————————————————————-}
 
 class Monad m where
-    bind :: m a -> (a-> m b)-> m b
+    (>>=) :: m a -> (a-> m b)-> m b
     return :: a -> m a
 
-(>>=) :: Monad m => m a -> (a -> m b) -> m b
-(>>=) = bind
-
 (=<<) :: Monad m => (a -> m b) -> m a -> m b
-(=<<) = flip bind
+(=<<) = flip (>>=)
 
 instance Monad Gen where
     return x = WrapGen $ \seed -> (x,seed)
 
-    bind genA f = WrapGen $ \seed ->
+    genA >>= f = WrapGen $ \seed ->
         let (ra,seed') = runGen genA seed
         in runGen (f ra) seed'
 
 instance Monad Maybe where
     return = Just
 
-    bind Nothing _ = Nothing
-    bind (Just x) f = f x
+    (>>=) Nothing _ = Nothing
+    (>>=) (Just x) f = f x
 
 
 instance Monad [] where
     return x = [x]
 
-    bind = flip concatMap
+    (>>=) = flip concatMap
 {-———————————————————————————————————————————————————————————————————————————————————————————————————-}
 -- ▇▇▇▇▇▇▇ Gen a 是一个动作action， 但这个动作并不是能直接执行得到结果值 （如同 IO），而是执行时需要有 预置状态s的动作！    
 evalGen :: Gen a -> Seed -> a

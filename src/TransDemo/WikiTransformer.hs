@@ -57,7 +57,7 @@ getValidPassphrase :: MaybeT IO String
 getValidPassphrase = do -- 该do 块对应的monad 为 MaybeT IO  (其实是 IO (Maybe a)))
     s <- lift getLine -- 我们使用了 lift 函数以在 MaybeT IO monad 中使用 getLine 和 putStrLn  
     guard (isValid s) -- MonadPlus 类型类使我们能够使用 guard.
-                        -- guard 可以为我们检查代码的合法性. 在密码不合法时其将返回 mzero (即 IO Nothing)
+                      -- guard 可以为我们检查代码的合法性. 在密码不合法时其将返回 mzero (即 IO Nothing)
     return s
 
 askPassphrase' :: MaybeT IO ()
