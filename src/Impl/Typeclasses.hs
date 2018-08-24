@@ -43,6 +43,9 @@ class (Monad m)=> MonadWriter w m | m -> w where
 class (Monad m)=> MonadState s m | m -> s where
     get :: m s
     put :: s -> m ()
+
+class (Monad m)=> MonadCont m where
+    callCC :: ((a -> m b) -> m a) -> m a
 -- **********************************************************************************
 class (Monad m)=> MonadPlus m where
     mzero :: m a
