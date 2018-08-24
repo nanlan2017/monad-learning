@@ -30,10 +30,10 @@ square_cps x = \k -> k (square x)
 -- square_cps x fNext = fNext $ square x
 
 pythagoras_cps :: Int -> Int -> ((Int -> r) -> r)
-pythagoras_cps x y = \k ->  --                   3 $ (*2)   ▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇ 通用经验：用Lambda 来 对应类型签名中的函数。
-                           square_cps x $ \x_squared ->  -- 这里 square_cps x 就是 (a->r)->r 啊  , 而 (\x_squared-> ...) 就是 【a-> ...】类型
-    square_cps y $ \y_squared ->  --       -- 而 square_cps y  就是下一个 (b->r)->r 
-                                 add_cps x_squared y_squared $ k
+pythagoras_cps x y k =   --                  
+                       square_cps x $ \x_squared ->  -- 这里 square_cps x 就是 (a->r)->r 啊  , 而 (\x_squared-> ...) 就是 【a-> ...】类型
+        square_cps y $ \y_squared ->  --       -- 而 square_cps y  就是下一个 (b->r)->r 
+                                     add_cps x_squared y_squared $ k
 
 {-                                
 -- | pythagoras x y fNext = fNext $        -- 只要确保 【fNext 所要求的参数】 与 【此函数的计算结果类型】 一致就可以了      
@@ -66,22 +66,28 @@ thrice f x = f (f (f x))
 
 thrice_cps :: (a -> ((a -> r) -> r)) -> a -> ((a -> r) -> r)
 thrice_cps f_cps x fnext =
-    f_cps x $ \fx ->   --
-                     f_cps fx $ \ffx ->    --
-                                        f_cps ffx $ fnext   --
+        f_cps x $ \fx ->   --
+                         f_cps fx $ \ffx ->    --
+                                            f_cps ffx $ fnext   --
 
 -- | 上面我们连续调用了3次 f_cps :: a -> ((a -> r) -> r)      , 看能不能chain 起来                                     
 chainCPS :: ((a -> r) -> r) -> (a -> ((b -> r) -> r)) -> ((b -> r) -> r)
 --  ▇▇▇▇▇▇▇▇▇▇▇▇▇其实非 CPS 版本就是:
 --                  a        ->     (a->b)               ->   b
+--                 ($ a)       ->   a -> ($ b)           ->   b
 --               挂起的a计算   ->  （a-> 挂起的b计算)        ->  挂起的b计算
 --       （假设Context 已存在a值） ->................->  （能将 Context 中的值计算成b 值）
 
 -- 怎么串两个函数：  1. 把一个函数当做另一个函数的参数   2. 提供一个初始值，完成链式计算
-chainCPS m f fNext = m $ \x -> f x $ fNext   -- | ▇▇▇▇▇▇▇注意观察各元素类型！！！
-
-
--- ◩◩◩◩◩◩◩◩◩◩◩◩◩◩◩◩◩◩◩◩◩◩◩◩◩◩◩◩◩◩◩◩◩◩◩◩◩◩◩◩◩◩◩◩◩◩◩◩◩◩◩◩◩◩◩◩◩◩◩◩◩◩◩◩◩◩◩◩◩◩◩◩◩◩◩◩◩◩
+    -- ▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇
+    --                  ▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇
+-- | Context 中的隐式状态是什么 ：  一个step 的中间结果 （传入Continuation 前就可以算是得到了一个结果）
+-- | (a->r)->r     passAto       这是一个高阶函数！相当于提供了一个a 值、后面跟【一个消费a 的函数】（无其他要求）
+-- | a->(b->r)->r  eatApassBto   这个先消费上一步的计算结果a、计算出一个b 值 +  继续向后面的函数传递
+-- | b->r          eatB          【一个消费 B 的函数】
+chainCPS passAto eatApassBto eatB = passAto $ \va -> eatApassBto va $ eatB
+    --                  ▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇
+    -- ▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇
 
 
 --  (a->r) -> r   会对应什么样的运算
@@ -89,8 +95,27 @@ newtype Cont r a = Cont {runCont :: (a->r)->r }
 
 instance Monad (Cont r) where
     -- return :: a -> Cont r a
-    -- return va  
-    -- return va = Cont $ let f = \va -> r in \f -> r
+    return va = Cont ($ va)
+    -- ▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇
+    -- ▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇
+    -- ▇▇▇▇▇▇▇  Cont r a   其实是抽象了一个运算中的两个部分：  
+     --                   ① a:  这个运算的 本 step 的运算成果
+     --                   ③ m :: (a->r)->r     要对它进行运算，需要  用 m 来传入一个 a->r 的函数 作为参数、对m 进行调用！！。
+     --                                                           如 \va -> Cont r #   :: 类型 a->r
+     --                                             即    Cont r a $ \va -> Cont r #    -----> 最后给一个 #->r（消费#类型参数的函数，如print）、 得到结果r
+     --                   ② r:  而最后通过 Continuation 运算的最终结果  (即 Continuation 的结果)
+    -- ▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇
+    -- ▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇
+    -- ▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇
+    -- bind :: Cont r a  -> (a-> Cont r b) -> Cont r b
+    -- bind :: { (a->r) ->r } -> { a-> (b->r) ->r } -> { (b->r) ->r }
+    --         { (a->r) ->r } $ { a-> (b->r) ->r } -> { (b->r) ->r }
+    -- 运算中每一个 $ 后面都是跟第三个参数： Continuation (即要将运算结果传入的)
+    m >>= f = Cont $ \after -> runCont m $ \va -> runCont (f va) after
+--     m >>= f = Cont $ \after -> runCont m f
 
 
 newtype ContT r m a = ContT {runContT :: (a->m r)-> m r}
+
+
+instance Monad m => Monad (ContT r m) where
