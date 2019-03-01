@@ -35,6 +35,12 @@ v11 = add_cps 2
 {-▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃-}
 {-▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃-}
 {-▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃-}
+{-
+add_cps 2 3  :: (Int->r)->r
+        【▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇ 就是一个已经‘部分求值’的高阶函数！ 其部分应用已求出部分值】（cps 风格的函数都是 高阶函数）
+   ▇▇▇▇▇▇▇▇是一个 suspended Value  (相当于“已经算出来以备作参数一个值”，但还缺一个使用此值的函数)
+-}
+
 f_cps :: Int -> String -> (String -> r) -> r
 f_cps i str k = k $ show i ++ str
 
@@ -51,8 +57,8 @@ ff_cps str i k = k $ show i ++ str
 --      两者都可以作为continuation:      非 CPS 的作为continuation 时，会得到一个 value
 --                                     CPS 作为continuation 时，会得到一个 suspended value |  一个
 
-v12a :: (String -> r) -> r  -- ▇▇▇▇▇▇▇  suspended Int ---> to suspended String   (▇▇ CPS consumer)
-                            --                       continuation 必然是 ::  Int -> (String->r)->r   （一个cps 风格的计算: 缺一个 Int 参数，运算出一个 String)
+v12a :: (String -> r) -> r  -- ▇▇▇▇▇▇▇  suspended Int --->Int to suspended String   (▇▇ CPS consumer)  ==  suspended String
+                            -- ▇▇▇▇▇▇▇                      continuation 必然是 ::  Int -> (b->r)->r   （一个cps 风格的计算: 缺一个 Int 参数，运算出一个 String)
 -- | (Int->r)->r   $   Int->(String->r)->r    ::   (String->r)->r     
 -- 抽象为  (a->r)->r  $  a->(b->r)->r     ::  (b->r)->r          ▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇
 --                                                              ▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇
@@ -97,15 +103,6 @@ square_cps :: Int -> ((Int -> r) -> r)
 square_cps x k = k (square x)
 -- square_cps x fNext = fNext $ square x
 
-
-{-
-add_cps 2 3  :: (Int->r)->r
-        【▇▇▇▇▇▇就是一个已经‘部分求值’的高阶函数！ 其部分应用已求出部分值】（cps 风格的函数都是 高阶函数）
-   是一个 suspended computation  (相当于“已经算出来以备作参数一个值”，但还缺一个使用此值的函数)
-
-   
-
--}
 pythagoras_cps :: Int -> Int -> ((Int -> r) -> r)
 pythagoras_cps x y k = square_cps x $ \x_squared ->
         square_cps y $ \y_squared -> add_cps x_squared y_squared k
@@ -137,8 +134,8 @@ thrice_cps f_cps x fnext =
                          f_cps fx $ \ffx ->    --
                                             f_cps ffx $ fnext   --    
 {-▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃-}
-add_cont :: Int -> Int -> Cont r Int
-add_cont x y = return (add x y)
+add_cont :: Int -> Int -> Cont r Int  -- Cont r a 不是continuation啊！而是一个suspended compuation 啊！！
+add_cont x y = return (add x y) -- 而 continuation 是 rest computation :    Int -> r
 
 square_cont :: Int -> Cont r Int
 square_cont x = return (square x)

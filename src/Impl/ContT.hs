@@ -11,15 +11,8 @@ chainCPS :: ((a -> r) -> r) -> (a -> ((b -> r) -> r)) -> (b -> r) -> r
 --  ▇▇▇▇▇▇▇▇▇▇▇▇▇其实非 CPS 版本就是:
 --                  a        ->     (a->b)               ->   b
 --                 ($ a)       ->   a -> ($ b)           ->   b
---               挂起的a计算   ->  （a-> 挂起的b计算)        ->  挂起的b计算
---       （假设Context 已存在a值） ->................->  （能将 Context 中的值计算成b 值）
-
 -- 怎么串两个函数：  1. 把一个函数当做另一个函数的参数   2. 提供一个初始值，完成链式计算
 
--- | Context 中的隐式状态是什么 ：  一个step 的中间结果 （传入Continuation 前就可以算是得到了一个结果）
--- | (a->r)->r     passAto       这是一个高阶函数！相当于提供了一个a 值、后面跟【一个消费a 的函数】（无其他要求）
--- | a->(b->r)->r  eatApassBto   这个先消费上一步的计算结果a、计算出一个b 值 +  继续向后面的函数传递
--- | b->r          eatB          【一个消费 B 的函数】
 chainCPS passAto eatApassBto eatB = passAto $ \va -> eatApassBto va $ eatB
 
 
@@ -27,6 +20,20 @@ chainCPS passAto eatApassBto eatB = passAto $ \va -> eatApassBto va $ eatB
 
 --  (a->r) -> r   会对应什么样的运算
 newtype Cont r a = Cont {runCont :: (a->r)->r }
+
+instance Functor (Cont r) where
+    -- (a->b)  <$>  Cont { (a->r)->r }  ::  Cont { (b->r)->r } 
+    f <$> cx = Cont $ \k ->
+        runCont cx $ \x->
+            k (f x)
+
+instance Applicative (Cont r) where
+    pure va = Cont ($ va)
+    -- <*>  
+    cf <*> cx = Cont $ \k ->
+        runCont cf $ \f ->
+        runCont cx $ \x ->
+        k (f x) -- 发现规律了，只在最后包裹结果
 
 instance Monad (Cont r) where
     -- return :: a -> Cont r a
@@ -46,15 +53,21 @@ instance Monad (Cont r) where
     -- bind :: { (a->r) ->r } -> { a-> (b->r) ->r } -> { (b->r) ->r }
     --         { (a->r) ->r } $ { a-> (b->r) ->r } -> { (b->r) ->r }
     -- 运算中每一个 $ 后面都是跟第三个参数： Continuation (即要将运算结果传入的)
-    m >>= f = Cont $ \after -> runCont m $ \va -> runCont (f va) after
+    cx >>= f = Cont $ \k -> runCont cx $ \x -> runCont (f x) $ \fx -> k fx
+
+    -- join :: Cont r (Cont r a) -> Cont r a
+    join ccx = Cont $ \k -> runCont ccx $ \cx -> runCont cx $ \x -> k x
 
 
 newtype ContT r m a = ContT {runContT :: (a->m r)-> m r}  -- 这个 Continuation 消耗a 值、最终产生结果是r （但会经过m 副作用）
 
 
 instance Monad (ContT r m) where
-    return va = ContT ($ va)    -- ($ va) :: (a->b)->b 
-    m >>= k  = ContT $ \c -> runContT m (\x -> runContT (k x) c)
+    return va = ContT ($ va)    -- ($ va) :: (a->b)->b ， 其中 b替换为mr
+    --  m ： suspended A
+    --  k :  A -> suspended B
+    --  得到  suspended B      
+    m >>= k  = ContT $ \c -> runContT m $ \x -> runContT (k x) c
 
 instance MonadTrans (ContT r) where
     lift m = ContT (m >>=)

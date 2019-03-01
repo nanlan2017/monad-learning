@@ -1,0 +1,4 @@
+
+callback 就是有一个函数作为参数，
+
+详见 <Haskell for All> -- the Cont Monad

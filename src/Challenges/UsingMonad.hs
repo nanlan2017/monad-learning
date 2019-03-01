@@ -18,6 +18,8 @@ newtype Gen a = WrapGen { runGen ::Seed -> (a,Seed)}
 class Monad m where
     (>>=) :: m a -> (a-> m b)-> m b
     return :: a -> m a
+    join :: m (m a)-> m a
+    join m = m >>= id
 
 (=<<) :: Monad m => (a -> m b) -> m a -> m b
 (=<<) = flip (>>=)
@@ -81,6 +83,3 @@ ap mf ma = mf >>= \f -> ma >>= \a -> return $ f a
 (<*>) :: Monad m => m (a -> b) -> m a -> m b
 (<*>) = ap
 
--- Set2 : combine
-join :: Maybe (Maybe a) -> Maybe a
-join m = m >>= id
